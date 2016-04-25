@@ -1,0 +1,32 @@
+{
+  "name": "rf-fin-ga",
+  "version": "0.1.0",
+  "description": "RF-FIN-GA",
+  "main": "index.html",
+  "keywords": [],
+  "engines": {
+    "node": ">=0.12"
+  },
+  "dependencies": {
+  },
+  "maintainers": [
+    {
+      "name": "George Wu",
+      "email": "uiharu@buaa.edu.cn",
+      "web": "http://uiharu.moe/"
+    }
+  ],
+  "contributors": [
+    {
+      "name": "George Wu",
+      "email": "uiharu@buaa.edu.cn",
+      "web": "http://uiharu.moe/"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hozuki/rf-fin-ga.git"
+  },
+  "license": "MIT",
+  "bugs": "http://github.com/Hozuki/rf-fin-ga/issues"
+}
