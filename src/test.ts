@@ -1,3 +1,3 @@
-import {GA} from "./GA";
+import {test} from "./TestFunc"
 
-GA.simulateOneTrial();
+test();

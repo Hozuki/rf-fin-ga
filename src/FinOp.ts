@@ -1,5 +1,7 @@
 export enum FinOp {
 
+    Invalid,
+
     Plus,
     Minus,
     Times,

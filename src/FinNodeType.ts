@@ -1,7 +1,9 @@
 export enum FinNodeType {
 
-    Number = 0,
-    Bool = 1,
-    Op = 2
+    None = 0,
+    Number = 1,
+    Bool = 2,
+    Op = 4,
+    CurVal = 8
 
 }

@@ -6,3 +6,4 @@ export * from "./GA";
 export * from "./Helper";
 export * from "./InvalidOperationError";
 export * from "./NotImplementedError";
+export * from "./TestFunc";
