@@ -23,29 +23,36 @@ export class GA {
         var population = this.makePopulation(this.modelParams.initialCount);
         console.info("Measuring fitness...");
         this.measureFitnessOfWholePopulation();
-        console.log("Fittest index: " + this.getFittestIndexInPopulation());
-        var fittest = population[this.getFittestIndexInPopulation()];
+        var fittestIndex = this.getFittestIndexInPopulation();
+        var fittest = population[fittestIndex];
         var newFittest = fittest;
-        fittest.draw(elem);
         const BATCH_EPOCH_COUNT = 25;
         var generationCounter = 0;
         const GENERATION_LIMIT = 2;
-        console.log("Fittest:", fittest, " / value: ", fittest.fitness);
+        console.log("Original fittest:", fittest, " / #" + fittestIndex + " / value: ", fittest.fitness);
         do {
-            console.info("Creating new generation...");
+            console.info(`Creating new batch (${generationCounter + 1}/${GENERATION_LIMIT})...`);
             for (var i = 0; i < BATCH_EPOCH_COUNT; ++i) {
                 this._population = population = this.hybrid();
-                console.info("Measuring fitness...");
+                console.info(`Measuring fitness (${i + 1}/${BATCH_EPOCH_COUNT})...`);
                 this.measureFitnessOfWholePopulation();
-                console.log("Fittest index: " + this.getFittestIndexInPopulation());
-                newFittest = population[this.getFittestIndexInPopulation()];
+                fittestIndex = this.getFittestIndexInPopulation();
+                newFittest = population[fittestIndex];
+                console.log(`Fittest in generation #${ i + generationCounter * BATCH_EPOCH_COUNT + 1}:`, newFittest, " / #" + fittestIndex + " / value: ", newFittest.fitness);
+                if (newFittest.fitness > fittest.fitness) {
+                    console.info("New fittest found.");
+                    fittest = newFittest;
+                }
             }
             ++generationCounter;
         } while (newFittest.fitness <= fittest.fitness && generationCounter < GENERATION_LIMIT);
-        fittest = newFittest;
+        if (newFittest.fitness > fittest.fitness) {
+            fittest = newFittest;
+        }
+        fittest.draw(elem);
 
         // 此时产生的 fittest 就是表达式，fittestValue 是最优解
-        console.log("Fittest:", fittest, " / value: ", newFittest.fitness);
+        console.log("Overall fittest:", fittest, " / value: ", fittest.fitness);
     }
 
     get modelParams():ModelParams {
@@ -73,7 +80,7 @@ export class GA {
             var tree:FinTree;
             do {
                 tree = this.makeSingleTree();
-            } while (!tree.isComplete);
+            } while (!tree.isComplete || tree.maxDepth > 10);
             population[i] = tree;
         }
         this._population = population;
@@ -222,7 +229,6 @@ export class GA {
         var population = this._population;
         for (var i = 0; i < population.length; ++i) {
             population[i].calculateRankWeight();
-            console.log(`Fitness #${i}: ${population[i].fitness}`);
         }
     }
 
@@ -299,11 +305,12 @@ function makeWeightTable(population:FinTree[]):Range[] {
  * 根据权值表，随机选出一对父母，返回它们的索引。
  * 权值表的结构是 [个体索引, {对应的[0,1)起始值, 对应的[0,1)结束值}]。
  * @param weightTable {Range[]}
+ * @param selfHybrid {Boolean} 是否允许自交。
  * @returns {{p1: number, p2: number}}
  */
-function randParent(weightTable:Range[]):{p1:number, p2:number} {
+function randParent(weightTable:Range[], selfHybrid:boolean = false):{p1:number, p2:number} {
     var r = {p1: 0, p2: 0};
-    var f1 = Math.random(), f2 = Math.random();
+    var f1 = Math.random();
     for (var n = 0; n < weightTable.length; ++n) {
         if (n < weightTable.length - 1) {
             if (weightTable[n].start > f1) {
@@ -314,16 +321,19 @@ function randParent(weightTable:Range[]):{p1:number, p2:number} {
             r.p1 = n;
         }
     }
-    for (var n = 0; n < weightTable.length; ++n) {
-        if (n < weightTable.length - 1) {
-            if (weightTable[n].start > f2) {
-                r.p2 = n - 1;
-                break;
+    do {
+        var f2 = Math.random();
+        for (var n = 0; n < weightTable.length; ++n) {
+            if (n < weightTable.length - 1) {
+                if (weightTable[n].start > f2) {
+                    r.p2 = n - 1;
+                    break;
+                }
+            } else {
+                r.p2 = n;
             }
-        } else {
-            r.p2 = n;
         }
-    }
+    } while (!selfHybrid && r.p1 === r.p2);
     return r;
 }
 

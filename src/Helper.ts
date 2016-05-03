@@ -43,4 +43,12 @@ export abstract class Helper {
         return b;
     }
 
+    static removeItemAt<T>(array:T[], index:number):boolean {
+        var b = 0 <= index && index < array.length;
+        if (b) {
+            array.splice(index, 1);
+        }
+        return b;
+    }
+
 }

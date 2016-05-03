@@ -39,7 +39,7 @@ export class FinTree {
         var type = Helper.getNodeReturnType(node);
         this.ensureNodeQueue();
         for (var i = 0; i < this._nodeQueue.length; ++i) {
-            if (Helper.getNodeReturnType(this._nodeQueue[i]) & type) {
+            if ((Helper.getNodeReturnType(this._nodeQueue[i]) & type) !== 0) {
                 return true;
             }
         }
@@ -65,7 +65,8 @@ export class FinTree {
 
     calculateRankWeight():void {
         this.ensureFitnessMeasured();
-        this._rankWeight = Math.exp(this._fitness);
+        // this._rankWeight = Math.exp(this._fitness);
+        this._rankWeight = Math.pow(1.2, this._fitness);
     }
 
     get rankWeight():number {
@@ -90,6 +91,14 @@ export class FinTree {
 
     set isComplete(v:boolean) {
         this._isComplete = v;
+    }
+
+    get maxDepth():number {
+        return this._maxDepth;
+    }
+
+    set maxDepth(v:number) {
+        this._maxDepth = v;
     }
 
     draw(container:HTMLElement):void {
@@ -195,25 +204,24 @@ export class FinTree {
         for (var t = 0; t < decisions.length - 1; ++t) {
             if (decisions[t]) {
                 // long
-                //R[t + 1] = (S[t + 1] * (1 + its[t])) / (S[t] * (1 + it[t]));
-                R[t + 1] = S[t + 1] / S[t];
+                R[t + 1] = (S[t + 1] * (1 + its[t])) / (S[t] * (1 + it[t]));
+                // R[t + 1] = S[t + 1] / S[t];
             } else {
                 // short
-                //R[t + 1] = 2 - (S[t + 1] * (1 + its[t])) / (S[t] * (1 + it[t]));
-                R[t + 1] = 2 - S[t + 1] / S[t];
+                R[t + 1] = 2 - (S[t + 1] * (1 + its[t])) / (S[t] * (1 + it[t]));
+                // R[t + 1] = 2 - S[t + 1] / S[t];
             }
         }
         var r = new Array<number>(decisions.length);
         this._r = r;
         for (var t = 0; t < decisions.length - 1; ++t) {
-            //r[t] = Math.log(S[t + 1]) - Math.log(S[t]) + Math.log(1 + its[t]) - Math.log(1 + it[t]);
-            r[t] = Math.log(S[t + 1]) - Math.log(S[t]);
+            r[t] = Math.log(S[t + 1]) - Math.log(S[t]) + Math.log(1 + its[t]) - Math.log(1 + it[t]);
+            // r[t] = Math.log(S[t + 1]) - Math.log(S[t]);
         }
         var S = this._modelParams.historicalExchangeRate;
         var result = 0;
         for (var t = 0; t < decisions.length - 1; ++t) {
             // c=0, n*ln((1+c)/(1-c))=0
-            //result += (decisions[t] ? 1 : -1) * r[t];
             result += (decisions[t] ? 1 : -1) * r[t];
         }
         return result;
@@ -227,6 +235,7 @@ export class FinTree {
     private _isFitnessMeasured:boolean = false;
     private _rankWeight:number = 0;
     private _fitness:number = 0;
+    private _maxDepth:number = 0;
     private _isComplete:boolean = false;
     private _R:number[] = null;
     private _r:number[] = null;

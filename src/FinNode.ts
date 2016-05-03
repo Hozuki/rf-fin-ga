@@ -24,6 +24,9 @@ export class FinNode implements ICloneable<FinNode> {
         this._value = value;
         this._tree = tree;
         this._depth = parent !== null ? parent.depth + 1 : 1;
+        if (this._depth > tree.maxDepth) {
+            tree.maxDepth = this._depth;
+        }
     }
 
     get parent():FinNode {
