@@ -25,7 +25,7 @@ export class GA {
         this.measureFitnessOfWholePopulation();
         var fittestIndex = this.getFittestIndexInPopulation();
         var fittest = population[fittestIndex];
-        var newFittest = fittest;
+        var newFittest:FinTree;
         const BATCH_EPOCH_COUNT = 25;
         var generationCounter = 0;
         const GENERATION_LIMIT = 2;
@@ -38,7 +38,7 @@ export class GA {
                 this.measureFitnessOfWholePopulation();
                 fittestIndex = this.getFittestIndexInPopulation();
                 newFittest = population[fittestIndex];
-                console.log(`Fittest in generation #${ i + generationCounter * BATCH_EPOCH_COUNT + 1}:`, newFittest, " / #" + fittestIndex + " / value: ", newFittest.fitness);
+                console.log(`Fittest in generation #${i + generationCounter * BATCH_EPOCH_COUNT + 1}:`, newFittest, " / #" + fittestIndex + " / value: ", newFittest.fitness);
                 if (newFittest.fitness > fittest.fitness) {
                     console.info("New fittest found.");
                     fittest = newFittest;
@@ -80,7 +80,7 @@ export class GA {
             var tree:FinTree;
             do {
                 tree = this.makeSingleTree();
-            } while (!tree.isComplete || tree.maxDepth > 10);
+            } while (!tree.checkValidity());
             population[i] = tree;
         }
         this._population = population;
@@ -114,7 +114,6 @@ export class GA {
         var root = gen(tree, null);
         tree.root = root;
 
-        // TODO: 加入10层的规则
         var undoneNodes:FinNode[] = [root];
         var totalNodeCount = 1;
         const NODE_THRESHOLD = 100;

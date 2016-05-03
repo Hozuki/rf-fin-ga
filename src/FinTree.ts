@@ -4,6 +4,8 @@ import {Helper} from "./Helper";
 import {ModelParams} from "./ModelParams";
 import {FinOp} from "./FinOp";
 import {FinNodeType} from "./FinNodeType";
+import {InvalidOperationError} from "./InvalidOperationError";
+import {ArgumentOutOfRangeError} from "./ArgumentOutOfRangeError";
 
 export class FinTree {
 
@@ -56,6 +58,124 @@ export class FinTree {
         return this._nodeQueue[index];
     }
 
+    /**
+     * 检查一棵树是否符合（人为指定的）生成规则。该函数在生成种群时用作个体过滤。
+     * @returns {Boolean}
+     */
+    checkValidity():boolean {
+        /**
+         * 这不是一个有效的数字类型。
+         * @type {Number}
+         */
+        const NUMERIC_ERR:number = 0;
+        /**
+         * 这是一个汇率。
+         * @type {Number}
+         */
+        const NUMERIC_RATE:number = 1;
+        /**
+         * 这是一个常数。
+         * @type {Number}
+         */
+        const NUMERIC_CONST:number = 2;
+
+        var b1 = this.isComplete && this.maxDepth <= 10;
+        if (!b1) {
+            return false;
+        }
+
+        // 量纲检查。规则：
+        // 乘法必须有一边是常数，一边是函数（lag/min等等）或当前汇率（简称：汇率）
+        // 除法的除数必须是常数，被除数必须是汇率
+        // 加减两边必须是汇率（*存疑）
+        // 大于/小于两边必须是汇率
+        // Norm两边必须是汇率
+        if (!checkNodeValidity(this.root)) {
+            return false;
+        }
+        this.ensureNodeQueue();
+        var q = this._nodeQueue;
+        for (var i = 0; i < q.length; ++i) {
+            if (!checkNodeValidity(q[i])) {
+                return false;
+            }
+        }
+
+        return true;
+
+        function checkNodeValidity(node:FinNode):boolean {
+            if (node.type === FinNodeType.Op) {
+                var leftType:number, rightType:number, centerType:number;
+                switch (node.value.op) {
+                    case FinOp.Plus:
+                    case FinOp.Minus:
+                    case FinOp.Greater:
+                    case FinOp.Less:
+                    case FinOp.Norm:
+                        leftType = identifyNumericNodeType(node.lChild);
+                        rightType = identifyNumericNodeType(node.rChild);
+                        return leftType === NUMERIC_RATE && rightType === NUMERIC_RATE;
+                    case FinOp.Times:
+                        leftType = identifyNumericNodeType(node.lChild);
+                        rightType = identifyNumericNodeType(node.rChild);
+                        return (leftType === NUMERIC_RATE && rightType === NUMERIC_CONST) || (leftType === NUMERIC_CONST && rightType == NUMERIC_RATE);
+                    case FinOp.Divide:
+                        leftType = identifyNumericNodeType(node.lChild);
+                        rightType = identifyNumericNodeType(node.rChild);
+                        return leftType === NUMERIC_RATE && rightType === NUMERIC_CONST;
+                    case FinOp.Average:
+                    case FinOp.Max:
+                    case FinOp.Min:
+                    case FinOp.Lag:
+                        // max/min/average/lag 在生成节点的时候已经立即生成了常数子节点，安全性有保证。
+                        return true;
+                    case FinOp.And:
+                    case FinOp.Or:
+                    case FinOp.Not:
+                        return true;
+                    case FinOp.IfThen:
+                    case FinOp.IfThenElse:
+                        throw new NotImplementedError();
+                    default:
+                        throw new ArgumentOutOfRangeError();
+                }
+            } else {
+                return true;
+            }
+        }
+
+        function identifyNumericNodeType(node:FinNode):number {
+            if (node.type === FinNodeType.Number) {
+                return NUMERIC_CONST;
+            } else if (node.type === FinNodeType.CurVal) {
+                return NUMERIC_RATE;
+            } else if (node.type === FinNodeType.Op) {
+                switch (node.value.op) {
+                    case FinOp.Plus:
+                    case FinOp.Minus:
+                    case FinOp.Times:
+                    case FinOp.Divide:
+                    case FinOp.Norm:
+                    case FinOp.Average:
+                    case FinOp.Max:
+                    case FinOp.Min:
+                    case FinOp.Lag:
+                        return NUMERIC_RATE;
+                    case FinOp.And:
+                    case FinOp.Or:
+                    case FinOp.Not:
+                    case FinOp.Greater:
+                    case FinOp.Less:
+                    case FinOp.IfThen:
+                    case FinOp.IfThenElse:
+                        return NUMERIC_ERR;
+                }
+            } else {
+                return NUMERIC_ERR;
+            }
+        }
+    }
+
     selectRandomNode():FinNode {
         this.ensureNodeQueue();
         var q = this._nodeQueue;
@@ -66,7 +186,12 @@ export class FinTree {
     calculateRankWeight():void {
         this.ensureFitnessMeasured();
         // this._rankWeight = Math.exp(this._fitness);
-        this._rankWeight = Math.pow(1.2, this._fitness);
+        var fitness = this._fitness;
+        if (fitness < 0) {
+            this._rankWeight = Math.pow(1.001, fitness);
+        } else {
+            this._rankWeight = 1 + Math.log(fitness + 1) / Math.log(2);
+        }
     }
 
     get rankWeight():number {

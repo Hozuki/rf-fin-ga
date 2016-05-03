@@ -20,7 +20,7 @@ export function test() {
     var startDay = prepareData();
     console.log(`Starting at 2011-01-04 (day ${startDay}).`);
     var params:ModelParams = {
-        periodLength: 1000,
+        periodLength: 500,
         initialCount: 500,
         //startDay: 2187,
         startDay: startDay,
