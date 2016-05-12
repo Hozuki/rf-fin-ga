@@ -2,8 +2,15 @@ import {FinNodeDescriptor} from "./FinNodeDescriptor";
 import {FinOp} from "./FinOp";
 import {FinNodeType} from "./FinNodeType";
 
+/**
+ * 这个类型定义只是为了：1、WebStorm 更好地提示代码输入；2、方便查错，强制让 TypeScript 编译器检查类型。
+ */
 type FNDMap = {[key:number]:FinNodeDescriptor};
 
+/**
+ * FinOp Node Definitions (FOND)
+ * @type {FNDMap}
+ */
 export const FOND:FNDMap = Object.create(null);
 
 FOND[FinOp.Plus] = {

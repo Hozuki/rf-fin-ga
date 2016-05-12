@@ -6,6 +6,9 @@ import {CsvExchangeRate, CsvDomesticInterestRate, CsvForeignInterestRate} from "
 import CSV = require("comma-separated-values");
 import leftpad = require("leftpad");
 
+/*
+ 这个对象存储解析 CSV 文本后我们要保留下来的数据。
+ */
 var records:{
     exchangeRate:number[],
     domesticInterestRate:number[],
@@ -16,13 +19,15 @@ var records:{
     foreignInterestRate: null
 };
 
+/**
+ * 主函数。
+ */
 export function test() {
     var startDay = prepareData();
     console.log(`Starting at 2011-01-04 (day ${startDay}).`);
     var params:ModelParams = {
         periodLength: 500,
         initialCount: 500,
-        //startDay: 2187,
         startDay: startDay,
         historicalExchangeRate: records.exchangeRate,
         historicalDomesticInterestRate: records.domesticInterestRate,
@@ -32,6 +37,10 @@ export function test() {
     ga.simulateOneTrial(window.document.body);
 }
 
+/**
+ * 解析 CSV 并保存到指定的对象中，最后返回 2011 年 1 月 4 日所在的索引。
+ * @returns {Number}
+ */
 function prepareData():number {
     // date, hkd/cny, ?
     var csv1 = new CSV(CsvExchangeRate);
@@ -87,6 +96,12 @@ function prepareData():number {
     console.log("Done.");
     return indexOf("2011-01-04", data1);
 
+    /**
+     * 在一个含日期的信息数组中查找对应日期的记录索引。
+     * @param dateString {String} 日期的字符串表达式，形如“YYYY-MM-DD”。
+     * @param array {*[][]} 信息数组。
+     * @returns {Number}
+     */
     function indexOf(dateString:string, array:any[][]):number {
         if (!array || array.length <= 0) {
             return -1;

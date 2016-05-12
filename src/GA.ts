@@ -1,51 +1,66 @@
 import {FinTree} from "./FinTree";
 import {FinNode} from "./FinNode";
-import {NotImplementedError} from "./NotImplementedError";
 import {ModelParams} from "./ModelParams";
 import {Helper} from "./Helper";
-import {FinOp} from "./FinOp";
 import {FOND} from "./FOND";
 import {FinNodeType} from "./FinNodeType";
 
 /**
- * 下限可取，上限不可取
+ * 表示一个下限可取，上限不可取的范围。
  */
 type Range = {start:number, end:number};
 
+/**
+ * 遗传算法的实现类。
+ */
 export class GA {
 
+    /**
+     * 创建新的遗传算法实现实例。
+     * @param modelParams {ModelParams} 模型参数。
+     */
     constructor(modelParams:ModelParams) {
         this._modelParams = modelParams;
     }
 
+    /**
+     * 模拟一次论文中描述的尝试。
+     * @param elem {HTMLElement} 用来可视化显示树的 {@link HTMLElement}。
+     */
     simulateOneTrial(elem:HTMLElement):void {
         console.info("Creating population...");
-        var population = this.makePopulation(this.modelParams.initialCount);
+        var population = this.__makePopulation(this.modelParams.initialCount);
         console.info("Measuring fitness...");
-        this.measureFitnessOfWholePopulation();
-        var fittestIndex = this.getFittestIndexInPopulation();
+        this.__measureFitnessOfWholePopulation();
+        var fittestIndex = this.__getFittestIndexInPopulation();
         var fittest = population[fittestIndex];
         var newFittest:FinTree;
+        // 一批25代
         const BATCH_EPOCH_COUNT = 25;
-        var generationCounter = 0;
-        const GENERATION_LIMIT = 2;
+        var batchCounter = 0;
+        // 最多计算2批
+        const BATCH_LIMIT = 2;
         console.log("Original fittest:", fittest, " / #" + fittestIndex + " / value: ", fittest.fitness);
         do {
-            console.info(`Creating new batch (${generationCounter + 1}/${GENERATION_LIMIT})...`);
+            console.info(`Creating new batch (${batchCounter + 1}/${BATCH_LIMIT})...`);
+            // 对每一批里的每一代
             for (var i = 0; i < BATCH_EPOCH_COUNT; ++i) {
-                this._population = population = this.hybrid();
+                // 杂交
+                this._population = population = this.__hybrid();
                 console.info(`Measuring fitness (${i + 1}/${BATCH_EPOCH_COUNT})...`);
-                this.measureFitnessOfWholePopulation();
-                fittestIndex = this.getFittestIndexInPopulation();
+                // 计算适应度
+                this.__measureFitnessOfWholePopulation();
+                // 选出本代内最优的个体
+                fittestIndex = this.__getFittestIndexInPopulation();
                 newFittest = population[fittestIndex];
-                console.log(`Fittest in generation #${i + generationCounter * BATCH_EPOCH_COUNT + 1}:`, newFittest, " / #" + fittestIndex + " / value: ", newFittest.fitness);
+                console.log(`Fittest in generation #${i + batchCounter * BATCH_EPOCH_COUNT + 1}:`, newFittest, " / #" + fittestIndex + " / value: ", newFittest.fitness);
                 if (newFittest.fitness > fittest.fitness) {
                     console.info("New fittest found.");
                     fittest = newFittest;
                 }
             }
-            ++generationCounter;
-        } while (newFittest.fitness <= fittest.fitness && generationCounter < GENERATION_LIMIT);
+            ++batchCounter;
+        } while (newFittest.fitness <= fittest.fitness && batchCounter < BATCH_LIMIT);
         if (newFittest.fitness > fittest.fitness) {
             fittest = newFittest;
         }
@@ -55,11 +70,19 @@ export class GA {
         console.log("Overall fittest:", fittest, " / value: ", fittest.fitness);
     }
 
+    /**
+     * 获取创建遗传实例时的模型参数。
+     * @returns {ModelParams}
+     */
     get modelParams():ModelParams {
         return this._modelParams;
     }
 
-    private getFittestIndexInPopulation():number {
+    /**
+     * 获取当前种群内最适宜的个体的索引。
+     * @returns {Number}
+     */
+    private __getFittestIndexInPopulation():number {
         var population = this._population;
         var fittestIndex = 0;
         for (var i = 1; i < population.length; ++i) {
@@ -73,13 +96,15 @@ export class GA {
     /**
      * 生成一个种群。
      * @param count {Number} 种群数量。
+     * @returns {FinTree[]}
+     * @private
      */
-    private makePopulation(count:number):FinTree[] {
+    private __makePopulation(count:number):FinTree[] {
         var population:FinTree[] = new Array<FinTree>(count);
         for (var i = 0; i < count; ++i) {
             var tree:FinTree;
             do {
-                tree = this.makeSingleTree();
+                tree = this.__makeSingleTree();
             } while (!tree.checkValidity());
             population[i] = tree;
         }
@@ -90,8 +115,9 @@ export class GA {
     /**
      * 生成一个 Lag 树，期望结果：tree._decisions 并不会恒为 true/false。
      * @returns {FinTree}
+     * @private
      */
-    private makeSingleTreeDebug():FinTree {
+    private __makeSingleTreeDebug():FinTree {
         var tree = new FinTree(this.modelParams);
         var root = FinNode.createLess(tree, null);
         tree.root = root;
@@ -104,7 +130,12 @@ export class GA {
         return tree;
     }
 
-    private makeSingleTree():FinTree {
+    /**
+     * 生成一棵树。
+     * @returns {FinTree}
+     * @private
+     */
+    private __makeSingleTree():FinTree {
         var tree = new FinTree(this.modelParams);
 
         // 创建根节点
@@ -197,7 +228,7 @@ export class GA {
                 ++totalNodeCount;
 
                 // 推送到未完成列表中
-                if (node.shouldHaveChild && node.childCount < FOND[Helper.getNodeFondType(node)].childCount) {
+                if (node.isLeaf && node.childCount < FOND[Helper.getNodeFondType(node)].childCount) {
                     undoneNodes.push(node);
                 }
                 // 如果父节点填满了，移除
@@ -217,14 +248,10 @@ export class GA {
         return tree;
     }
 
-    private makeSingleTreeLeafToRoot():FinTree {
-        throw new NotImplementedError();
-    }
-
     /**
      * 更新种群内所有个体的适应度。
      */
-    private measureFitnessOfWholePopulation():void {
+    private __measureFitnessOfWholePopulation():void {
         var population = this._population;
         for (var i = 0; i < population.length; ++i) {
             population[i].calculateRankWeight();
@@ -233,8 +260,9 @@ export class GA {
 
     /**
      * 种群杂交，生成新的种群。修改新种群不会影响原种群。
+     * @returns {FinTree[]}
      */
-    private hybrid():FinTree[] {
+    private __hybrid():FinTree[] {
         var population = this._population;
         var newPopulation:FinTree[] = [];
         var weightTable = makeWeightTable(population);
@@ -280,8 +308,8 @@ export class GA {
 }
 
 /**
- * 根据当前种群计算一个权值表。
- * @param population {FinTree[]}
+ * 根据当前种群计算一个权重表，根据这张表抽选亲代。
+ * @param population {FinTree[]} 当前种群。
  * @returns {Range[]}
  */
 function makeWeightTable(population:FinTree[]):Range[] {
@@ -292,6 +320,7 @@ function makeWeightTable(population:FinTree[]):Range[] {
     var table:Range[] = [];
     var start = 0;
     for (var i = 0; i < population.length; ++i) {
+        // 区间长度按照权重简单加和后归一化。而权重函数未必是线性函数，例如在5月版本中，就是一个指数-对数分段函数。
         var section = population[i].rankWeight / totalWeight;
         var end = start + section;
         table.push({start: start, end: end});
@@ -303,8 +332,8 @@ function makeWeightTable(population:FinTree[]):Range[] {
 /**
  * 根据权值表，随机选出一对父母，返回它们的索引。
  * 权值表的结构是 [个体索引, {对应的[0,1)起始值, 对应的[0,1)结束值}]。
- * @param weightTable {Range[]}
- * @param selfHybrid {Boolean} 是否允许自交。
+ * @param weightTable {Range[]} 权重表。
+ * @param [selfHybrid] {Boolean} 是否允许自交。默认不允许自交。
  * @returns {{p1: number, p2: number}}
  */
 function randParent(weightTable:Range[], selfHybrid:boolean = false):{p1:number, p2:number} {
@@ -336,6 +365,11 @@ function randParent(weightTable:Range[], selfHybrid:boolean = false):{p1:number,
     return r;
 }
 
+/**
+ * 在一个数组中按照依据平均随机抽取出一个元素。
+ * @param values {*[]} 要抽取元素的数组。
+ * @returns {T}
+ */
 function randomIn<T>(values:any[]):T {
     var index = (Math.random() * values.length) | 0;
     return <T>values[index];
@@ -343,6 +377,9 @@ function randomIn<T>(values:any[]):T {
 
 type NodeGenerator = (tree:FinTree, parent:FinNode, value?:any) => FinNode;
 
+/**
+ * 节点生成函数一览对象。
+ */
 const NodeGen:{[key:string]:NodeGenerator[]} = {
     "value": [ // 2
         FinNode.createBool,
@@ -370,26 +407,3 @@ const NodeGen:{[key:string]:NodeGenerator[]} = {
         FinNode.createLag
     ]
 };
-
-var GenMap = (function (gm:Map<NodeGenerator, FinOp>):Map<NodeGenerator,FinOp> {
-    gm.set(FinNode.createNumber, FinOp.Invalid);
-    gm.set(FinNode.createBool, FinOp.Invalid);
-    gm.set(FinNode.createCurVal, FinOp.Invalid);
-    gm.set(FinNode.createAnd, FinOp.And);
-    gm.set(FinNode.createOr, FinOp.Or);
-    gm.set(FinNode.createNot, FinOp.Not);
-    gm.set(FinNode.createGreater, FinOp.Greater);
-    gm.set(FinNode.createLess, FinOp.Less);
-    gm.set(FinNode.createIfThen, FinOp.IfThen);
-    gm.set(FinNode.createIfThenElse, FinOp.IfThenElse);
-    gm.set(FinNode.createPlus, FinOp.Plus);
-    gm.set(FinNode.createMinus, FinOp.Minus);
-    gm.set(FinNode.createTimes, FinOp.Times);
-    gm.set(FinNode.createDivide, FinOp.Divide);
-    gm.set(FinNode.createNorm, FinOp.Norm);
-    gm.set(FinNode.createAverage, FinOp.Average);
-    gm.set(FinNode.createMax, FinOp.Max);
-    gm.set(FinNode.createMin, FinOp.Min);
-    gm.set(FinNode.createLag, FinOp.Lag);
-    return gm;
-})(new Map<NodeGenerator,FinOp>());
