@@ -145,7 +145,7 @@ export class FinNode implements ICloneable<FinNode> {
      * 获取该节点是否是叶子节点。
      * @returns {Boolean}
      */
-    get isLeaf():boolean {
+    get shouldHaveChildren():boolean {
         return this.type === FinNodeType.Op;
     }
 

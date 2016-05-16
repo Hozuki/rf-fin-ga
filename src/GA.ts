@@ -4,6 +4,7 @@ import {ModelParams} from "./ModelParams";
 import {Helper} from "./Helper";
 import {FOND} from "./FOND";
 import {FinNodeType} from "./FinNodeType";
+import {DayLengthPair} from "./DayLengthPair";
 
 /**
  * 表示一个下限可取，上限不可取的范围。
@@ -18,9 +19,11 @@ export class GA {
     /**
      * 创建新的遗传算法实现实例。
      * @param modelParams {ModelParams} 模型参数。
+     * @param extraDLP {DayLengthPair[]} 额外要计算的收益时间段。
      */
-    constructor(modelParams:ModelParams) {
+    constructor(modelParams:ModelParams, extraDLP:DayLengthPair[] = null) {
         this._modelParams = modelParams;
+        this._extraDLPs = extraDLP.slice();
     }
 
     /**
@@ -41,6 +44,9 @@ export class GA {
         // 最多计算2批
         const BATCH_LIMIT = 2;
         console.log("Original fittest:", fittest, " / #" + fittestIndex + " / value: ", fittest.fitness);
+
+        var historyBestIndividuals:FinTree[] = [fittest];
+
         do {
             console.info(`Creating new batch (${batchCounter + 1}/${BATCH_LIMIT})...`);
             // 对每一批里的每一代
@@ -53,6 +59,8 @@ export class GA {
                 // 选出本代内最优的个体
                 fittestIndex = this.__getFittestIndexInPopulation();
                 newFittest = population[fittestIndex];
+                // 将该代的最佳个体记录入集合，准备接下来的计算
+                historyBestIndividuals.push(newFittest);
                 console.log(`Fittest in generation #${i + batchCounter * BATCH_EPOCH_COUNT + 1}:`, newFittest, " / #" + fittestIndex + " / value: ", newFittest.fitness);
                 if (newFittest.fitness > fittest.fitness) {
                     console.info("New fittest found.");
@@ -68,6 +76,18 @@ export class GA {
 
         // 此时产生的 fittest 就是表达式，fittestValue 是最优解
         console.log("Overall fittest:", fittest, " / value: ", fittest.fitness);
+
+        if (this._extraDLPs !== null && this._extraDLPs.length > 0) {
+            // 然后分段计算指定时间段内的收益
+            for (var j = 0; j < this._extraDLPs.length; ++j) {
+                var dlp = this._extraDLPs[j];
+                for (var i = 0; i < historyBestIndividuals.length; ++i) {
+                    var individual = historyBestIndividuals[i];
+                    var gain = individual.forceRecomputeGain(dlp.startDay, dlp.periodLength);
+                    console.log("Extra gain calculation: individual = ", individual, `, gain = ${gain} from ${dlp.startDayString} for ${dlp.periodLength} days.`);
+                }
+            }
+        }
     }
 
     /**
@@ -228,7 +248,7 @@ export class GA {
                 ++totalNodeCount;
 
                 // 推送到未完成列表中
-                if (node.isLeaf && node.childCount < FOND[Helper.getNodeFondType(node)].childCount) {
+                if (node.shouldHaveChildren && node.childCount < FOND[Helper.getNodeFondType(node)].childCount) {
                     undoneNodes.push(node);
                 }
                 // 如果父节点填满了，移除
@@ -304,6 +324,7 @@ export class GA {
 
     private _modelParams:ModelParams = null;
     private _population:FinTree[] = null;
+    private _extraDLPs:DayLengthPair[] = null;
 
 }
 
@@ -370,9 +391,9 @@ function randParent(weightTable:Range[], selfHybrid:boolean = false):{p1:number,
  * @param values {*[]} 要抽取元素的数组。
  * @returns {T}
  */
-function randomIn<T>(values:any[]):T {
+function randomIn<T>(values:T[]):T {
     var index = (Math.random() * values.length) | 0;
-    return <T>values[index];
+    return values[index];
 }
 
 type NodeGenerator = (tree:FinTree, parent:FinNode, value?:any) => FinNode;

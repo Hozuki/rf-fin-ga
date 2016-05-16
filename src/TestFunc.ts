@@ -5,112 +5,29 @@ import {CsvExchangeRate, CsvDomesticInterestRate, CsvForeignInterestRate} from "
 // hack
 import CSV = require("comma-separated-values");
 import leftpad = require("leftpad");
-
-/*
- 这个对象存储解析 CSV 文本后我们要保留下来的数据。
- */
-var records:{
-    exchangeRate:number[],
-    domesticInterestRate:number[],
-    foreignInterestRate:number[]
-} = {
-    exchangeRate: null,
-    domesticInterestRate: null,
-    foreignInterestRate: null
-};
+import {CsvDataLoader} from "./CsvDataLoader";
 
 /**
  * 主函数。
  */
 export function test() {
-    var startDay = prepareData();
+    CsvDataLoader.load();
+    var startDay = CsvDataLoader.get04Jan2011Index();
     console.log(`Starting at 2011-01-04 (day ${startDay}).`);
     var params:ModelParams = {
-        periodLength: 500,
+        periodLength: 1000,
         initialCount: 500,
         startDay: startDay,
-        historicalExchangeRate: records.exchangeRate,
-        historicalDomesticInterestRate: records.domesticInterestRate,
-        historicalForeignInterestRate: records.foreignInterestRate
+        startDayString: "2011-01-04",
+        historicalExchangeRate: CsvDataLoader.records.exchangeRate,
+        historicalDomesticInterestRate: CsvDataLoader.records.domesticInterestRate,
+        historicalForeignInterestRate: CsvDataLoader.records.foreignInterestRate
     };
-    var ga = new GA(params);
+    var ga = new GA(params, [
+        // 2014-01-02 开始 500 天（预计到2015年末）
+        {startDay: CsvDataLoader.indexOf("2014-01-02"), periodLength: 500, startDayString: "2014-01-02"},
+        // 2011-01-04 开始 1500 天（预计到2013年末）
+        {startDay: CsvDataLoader.indexOf("2011-01-04"), periodLength: 1500, startDayString: "2011-01-04"}
+    ]);
     ga.simulateOneTrial(window.document.body);
-}
-
-/**
- * 解析 CSV 并保存到指定的对象中，最后返回 2011 年 1 月 4 日所在的索引。
- * @returns {Number}
- */
-function prepareData():number {
-    // date, hkd/cny, ?
-    var csv1 = new CSV(CsvExchangeRate);
-    var data1 = csv1.parse();
-    records.exchangeRate = [];
-    for (var i = 0; i < data1.length; ++i) {
-        records.exchangeRate.push(data1[i][1]);
-    }
-
-    var csv2 = new CSV(CsvDomesticInterestRate);
-    // data = csv.parse({
-    //     header: ["date", "hibor_overnight", "hibor_one_week", "hibor_one_month", "hibor_six_months"]
-    // });
-    var data2 = csv2.parse();
-    records.domesticInterestRate = [];
-    for (var i = 0; i < data2.length; ++i) {
-        records.domesticInterestRate.push(data2[i][1]);
-    }
-
-    var csv3 = new CSV(CsvForeignInterestRate);
-    // data = csv.parse({
-    //     header: ["date", "shibor_overnight", "shibor_one_week"]
-    // });
-    var data3 = csv3.parse();
-    records.foreignInterestRate = [];
-    for (var i = 0; i < data3.length; ++i) {
-        records.foreignInterestRate.push(data3[i][1]);
-    }
-
-    console.log("Cleaning CSV data...");
-    for (var year = 1994; year < 2016; ++year) {
-        for (var month = 1; month < 13; ++month) {
-            for (var day = 1; day < 32; ++day) {
-                var dateString = `${leftpad(year, 4)}-${leftpad(month, 2)}-${leftpad(day, 2)}`;
-                var i1 = indexOf(dateString, data1), i2 = indexOf(dateString, data2), i3 = indexOf(dateString, data3);
-                if (i1 < 0 || i2 < 0 || i3 < 0) {
-                    if (i1 >= 0) {
-                        Helper.removeItemAt(data1, i1);
-                        Helper.removeItemAt(records.exchangeRate, i1);
-                    }
-                    if (i2 >= 0) {
-                        Helper.removeItemAt(data2, i2);
-                        Helper.removeItemAt(records.domesticInterestRate, i2);
-                    }
-                    if (i3 >= 0) {
-                        Helper.removeItemAt(data3, i3);
-                        Helper.removeItemAt(records.foreignInterestRate, i3);
-                    }
-                }
-            }
-        }
-    }
-    console.log("Done.");
-    return indexOf("2011-01-04", data1);
-
-    /**
-     * 在一个含日期的信息数组中查找对应日期的记录索引。
-     * @param dateString {String} 日期的字符串表达式，形如“YYYY-MM-DD”。
-     * @param array {*[][]} 信息数组。
-     * @returns {Number}
-     */
-    function indexOf(dateString:string, array:any[][]):number {
-        if (!array || array.length <= 0) {
-            return -1;
-        }
-        for (var i = 0; i < array.length; ++i) {
-            if (array[i][0] === dateString) {
-                return i;
-            }
-        }
-        return -1;
-    }
 }

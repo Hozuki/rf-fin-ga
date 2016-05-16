@@ -41,18 +41,36 @@ export class FinTree {
 
     /**
      * 计算这棵树的适应度。
+     * @param offset {Number} 开始日期距总时间流零点的索引。
      * @returns {Number}
      */
-    measureFitness():number {
+    measureFitness(offset:number):number {
         // 适应度每次计算都需要比较长的时间，而如果树不变则适应度不变，所以此处设计了一个缓存，第二次查询适应度的时候就直接返回之前计算的结果。
         if (!this._isFitnessMeasured) {
             for (var i = 0; i < this._decisions.length; ++i) {
-                this._decisions[i] = this.__computeDay(i);
+                this._decisions[i] = this.__decideDay(i, offset);
             }
             this._fitness = this.__computeGain();
             this._isFitnessMeasured = true;
         }
         return this._fitness;
+    }
+
+    /**
+     * 忽略缓存，强制从开始日期索引开始，指定时间长度，完全重新计算收益。
+     * 警告：调用该函数后，决策数组会被覆盖。
+     * @param startDay {Number} 开始日期在时间流中的索引。
+     * @param periodLength {Number} 时间长度。
+     */
+    forceRecomputeGain(startDay:number, periodLength:number):number {
+        this._decisions = new Array<boolean>(periodLength + 1);
+        for (var i = 0; i < this._decisions.length; ++i) {
+            this._decisions[i] = false;
+        }
+        for (var i = 0; i < this._decisions.length; ++i) {
+            this._decisions[i] = this.__decideDay(i, startDay);
+        }
+        return this.__computeGain();
     }
 
     /**
@@ -238,7 +256,6 @@ export class FinTree {
      */
     calculateRankWeight():void {
         this.__ensureFitnessMeasured();
-        // this._rankWeight = Math.exp(this._fitness);
         var fitness = this._fitness;
         if (fitness < 0) {
             this._rankWeight = Math.pow(1.001, fitness);
@@ -382,7 +399,7 @@ export class FinTree {
      */
     private __ensureFitnessMeasured():void {
         if (!this._isFitnessMeasured) {
-            this.measureFitness();
+            this.measureFitness(this._modelParams.startDay);
         }
     }
 
@@ -426,11 +443,12 @@ export class FinTree {
     /**
      * 计算某日的投资倾向。
      * @param day {Number} 要计算第几天。
+     * @param offset {Number} 距总时间流中的零点的偏移。
      * @returns {Boolean}
      * @private
      */
-    private __computeDay(day:number):boolean {
-        return this.root.computeBool(day + this._modelParams.startDay);
+    private __decideDay(day:number, offset:number):boolean {
+        return this.root.computeBool(day + offset);
     }
 
     /**
@@ -444,7 +462,6 @@ export class FinTree {
         var S = this._modelParams.historicalExchangeRate;
         var its = this._modelParams.historicalForeignInterestRate;
         var it = this._modelParams.historicalDomesticInterestRate;
-        this._R = R;
         for (var t = 0; t < decisions.length - 1; ++t) {
             if (decisions[t]) {
                 // long
@@ -455,7 +472,6 @@ export class FinTree {
             }
         }
         var r = new Array<number>(decisions.length);
-        this._r = r;
         for (var t = 0; t < decisions.length - 1; ++t) {
             r[t] = Math.log(S[t + 1]) - Math.log(S[t]) + Math.log(1 + its[t]) - Math.log(1 + it[t]);
         }
@@ -476,7 +492,5 @@ export class FinTree {
     private _fitness:number = 0;
     private _maxDepth:number = 0;
     private _isComplete:boolean = false;
-    private _R:number[] = null;
-    private _r:number[] = null;
 
 }
